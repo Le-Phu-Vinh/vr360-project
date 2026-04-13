@@ -1,0 +1,150 @@
+:root {
+  --eye-height: 85vh;
+  --eye-radius: 30px;
+  --base-font-size: 8px; /* Cỡ chữ 8px theo cấu hình của người dùng */
+}
+
+.camera-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: #000;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 6vw; 
+  overflow: hidden;
+}
+
+.eye-view {
+  width: 30vw;
+  height: var(--eye-height);
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--eye-radius);
+  box-shadow: inset 0 0 20px #000;
+}
+
+.camera-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+}
+
+.divider {
+  display: none;
+}
+
+/* Thẻ Thông Tin Khung Dựng (HUD) Lơ lửng */
+.artifact-card {
+  position: absolute;
+  top: 10%;
+  left: 5%;
+  transform: none;
+  width: 90%;
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: white;
+  z-index: 100;
+  pointer-events: none; /* Khong chan click */
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  text-shadow: 1px 1px 4px #000, -1px -1px 4px #000, 0px 4px 12px rgba(0,0,0,0.8);
+}
+
+.card-header {
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+}
+
+.card-id {
+  font-size: var(--base-font-size);
+  opacity: 0.8;
+  letter-spacing: 1px;
+}
+
+.card-title {
+  margin: 4px 0 0 0;
+  font-size: var(--base-font-size);
+  color: #fbbf24; /* Vàng kim */
+  font-weight: 600;
+}
+
+.card-body {
+  font-size: calc(var(--base-font-size) * 0.82);
+  line-height: 1.4;
+}
+
+.card-detail {
+  margin: 4px 0;
+  color: #e2e8f0;
+}
+
+.card-detail span {
+  opacity: 0.6;
+  font-weight: 500;
+  margin-right: 4px;
+}
+
+.card-desc {
+  margin-top: 8px;
+  opacity: 0.9;
+  font-style: italic;
+}
+
+.error-state {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  color: white;
+  text-align: center;
+  padding: 32px;
+  background-color: #111;
+  z-index: 10;
+}
+
+.error-state p {
+  font-size: 16px;
+  opacity: 0.8;
+  line-height: 1.5;
+}
+
+.error-state button {
+  background: white;
+  color: black;
+  border: none;
+  padding: 14px 28px;
+  border-radius: 24px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.error-state button:active {
+  transform: scale(0.95);
+}
+
+/* Phần Box Video */
+.card-video-container {
+  width: 100%;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  /* Trình diễn biến động nhận từ react state inline */
+  opacity: 0.5;
+  transform: translate(0px, 45px);
+}
+
+.artifact-video {
+  width: 100%;
+  display: block;
+}
