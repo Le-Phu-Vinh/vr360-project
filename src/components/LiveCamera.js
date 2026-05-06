@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import jsQR from 'jsqr';
 import { artifactsData } from '../data/artifacts';
 import { artifactVideos } from '../data/videos';
+import ArtifactModel from './ArtifactModel';
+import useGamepad from '../hooks/useGamepad';
 import './LiveCamera.css';
 
 const LiveCamera = () => {
@@ -10,9 +12,61 @@ const LiveCamera = () => {
   const canvasRef = useRef(null);
   const [hasPermission, setHasPermission] = useState(null);
   const [currentArtifact, setCurrentArtifact] = useState(null);
+  const [isJoyRotationActive, setIsJoyRotationActive] = useState(true);
   
+  // Trạng thái cài đặt màn hình thủ công
+  const [showSettings, setShowSettings] = useState(false);
+  const [settingGap, setSettingGap] = useState(0);
+  const [settingEyeWidth, setSettingEyeWidth] = useState(38);
+  const [settingEyeHeight, setSettingEyeHeight] = useState(85);
+  const [showAxes, setShowAxes] = useState(true);
+
+  const { gamepad, buttonStates, axes } = useGamepad();
+
   const streamRef = useRef(null);
   const scanIntervalRef = useRef(null);
+
+  // Xử lý nút bấm Gamepad và Bàn phím (Mouse Mode)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+        // Giữ logic ẩn nhưng xóa log ra UI
+        if (e.key === '@' || e.key === 'Enter' || e.key === 'Escape' || e.code === 'KeyM') {
+            setIsJoyRotationActive(prev => !prev);
+        }
+        // Tay cầm VR thường map nút 'C' sang Volume Up / Down ở chế độ media
+        if (
+            e.key.toLowerCase() === 'c' || 
+            e.key === 'AudioVolumeUp' || 
+            e.code === 'VolumeUp' ||
+            e.key === 'AudioVolumeDown' ||
+            e.code === 'VolumeDown'
+        ) {
+            setShowSettings(prev => !prev);
+            // Cố gắng chặn hành vi mặc định tăng giảm âm lượng của trình duyệt
+            if(e.cancelable) e.preventDefault();
+        }
+    };
+    
+    const handleMouseDown = (e) => {
+        // Giữ để có thể toggle nếu cần nhưng không hiện log
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('mousedown', handleMouseDown);
+
+    if (gamepad) {
+        if (buttonStates[0]) enterFullscreen();
+        if (buttonStates[1]) setCurrentArtifact(null);
+        if (buttonStates[3] || buttonStates[2]) {
+            setIsJoyRotationActive(prev => !prev);
+        }
+    }
+
+    return () => {
+        window.removeEventListener('keydown', handleKeyDown);
+        window.removeEventListener('mousedown', handleMouseDown);
+    };
+  }, [buttonStates, gamepad]);
 
   useEffect(() => {
     startCamera();
@@ -22,28 +76,54 @@ const LiveCamera = () => {
     };
   }, []);
 
+  // Tự động gán stream khi refs đã sẵn sàng
+  useEffect(() => {
+    if (hasPermission && streamRef.current && leftVideoRef.current && rightVideoRef.current) {
+        const setupVideos = async () => {
+            leftVideoRef.current.srcObject = streamRef.current;
+            rightVideoRef.current.srcObject = streamRef.current;
+            
+            try {
+                await Promise.all([
+                    leftVideoRef.current.play(),
+                    rightVideoRef.current.play()
+                ]);
+                console.log("Camera videos playing");
+            } catch (err) {
+                console.warn("Auto-play blocked, waiting for user interaction", err);
+            }
+            
+            if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
+            scanIntervalRef.current = setInterval(scanQRCode, 500);
+        };
+        setupVideos();
+    }
+  }, [hasPermission]);
+
   const startCamera = async () => {
     stopCamera();
     try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' },
+      const constraints = {
+        video: { 
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+        },
         audio: false,
-      });
+      };
+      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = mediaStream;
       setHasPermission(true);
-      
-      if (leftVideoRef.current && rightVideoRef.current) {
-         leftVideoRef.current.srcObject = mediaStream;
-         rightVideoRef.current.srcObject = mediaStream;
-
-         leftVideoRef.current.onloadedmetadata = () => {
-             leftVideoRef.current.play();
-             scanIntervalRef.current = setInterval(scanQRCode, 500);
-         };
-      }
     } catch (err) {
       console.error("Error accessing camera:", err);
-      setHasPermission(false);
+      // Fallback cho một số trình duyệt không hỗ trợ ideal environment
+      try {
+        const simpleStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        streamRef.current = simpleStream;
+        setHasPermission(true);
+      } catch (fallbackErr) {
+        setHasPermission(false);
+      }
     }
   };
 
@@ -80,6 +160,11 @@ const LiveCamera = () => {
 
   const enterFullscreen = async () => {
     const elem = document.documentElement;
+    
+    // Đảm bảo video chạy khi người dùng tương tác (khắc phục lỗi màn hình đen ở một số trình duyệt)
+    if (leftVideoRef.current) leftVideoRef.current.play().catch(e => console.log("Play error:", e));
+    if (rightVideoRef.current) rightVideoRef.current.play().catch(e => console.log("Play error:", e));
+
     try {
       if (!document.fullscreenElement && !document.webkitFullscreenElement) {
         if (elem.requestFullscreen) {
@@ -103,26 +188,95 @@ const LiveCamera = () => {
 
     return (
       <div className="artifact-card">
-        <div className="card-header">
-          <div className="card-id">ID: {currentArtifact.id}</div>
-          <h2 className="card-title">{currentArtifact.name}</h2>
-        </div>
-        <div className="card-body">
-          <p className="card-detail"><span>Nguồn gốc:</span> {currentArtifact.origin}</p>
-          <p className="card-detail"><span>Niên đại:</span> {currentArtifact.period}</p>
-          <p className="card-detail"><span>Vật liệu:</span> {currentArtifact.material}</p>
-          <p className="card-desc">{currentArtifact.description}</p>
-          {matchingVideo && (
-            <div className="card-video-container">
-               <video 
-                 src={matchingVideo.videoUrl} 
-                 autoPlay 
-                 loop 
-                 playsInline 
-                 className="artifact-video"
-               />
+        <div className="card-info-section">
+
+
+          <div className="card-header">
+            <div className="card-id">ID: {currentArtifact.id}</div>
+            <h2 className="card-title">{currentArtifact.name}</h2>
+            <div className="status-row">
+                {gamepad && <div className="gamepad-status active">🎮 Connected</div>}
             </div>
-          )}
+          </div>
+          <div className="card-body">
+            <p className="card-detail"><span>Nguồn gốc:</span> {currentArtifact.origin}</p>
+            <p className="card-detail"><span>Niên đại:</span> {currentArtifact.period}</p>
+            <p className="card-detail"><span>Vật liệu:</span> {currentArtifact.material}</p>
+            <p className="card-desc">{currentArtifact.description}</p>
+          </div>
+        </div>
+        
+        {currentArtifact.modelUrl && currentArtifact.textureUrl && (
+          <div className="card-model-section">
+            <ArtifactModel 
+              plyUrl={currentArtifact.modelUrl} 
+              textureUrl={currentArtifact.textureUrl} 
+              axes={axes}
+              mouseRotation={isJoyRotationActive}
+              showAxes={showAxes}
+            />
+          </div>
+        )}
+
+        {matchingVideo && (
+          <div className="card-video-container">
+             <video 
+               src={matchingVideo.videoUrl} 
+               autoPlay 
+               loop 
+               playsInline 
+               className="artifact-video"
+             />
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const SettingsMenu = () => {
+    if (!showSettings) return null;
+    return (
+      <div className="settings-menu" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
+        <div className="settings-title">Chỉnh Màn Hình VR</div>
+        
+        <div className="setting-item">
+          <span>Khoảng cách: {settingGap.toFixed(1)}vw</span>
+          <div className="setting-btns">
+            <button onPointerDown={(e) => { e.stopPropagation(); setSettingGap(v => Math.max(0, v - 0.5)); }}>-</button>
+            <button onPointerDown={(e) => { e.stopPropagation(); setSettingGap(v => v + 0.5); }}>+</button>
+          </div>
+        </div>
+        
+        <div className="setting-item">
+          <span>Chiều rộng: {settingEyeWidth.toFixed(1)}vw</span>
+          <div className="setting-btns">
+            <button onPointerDown={(e) => { e.stopPropagation(); setSettingEyeWidth(v => Math.max(10, v - 1)); }}>-</button>
+            <button onPointerDown={(e) => { e.stopPropagation(); setSettingEyeWidth(v => Math.min(100, v + 1)); }}>+</button>
+          </div>
+        </div>
+        
+        <div className="setting-item">
+          <span>Chiều cao: {settingEyeHeight.toFixed(1)}vh</span>
+          <div className="setting-btns">
+            <button onPointerDown={(e) => { e.stopPropagation(); setSettingEyeHeight(v => Math.max(10, v - 1)); }}>-</button>
+            <button onPointerDown={(e) => { e.stopPropagation(); setSettingEyeHeight(v => Math.min(100, v + 1)); }}>+</button>
+          </div>
+        </div>
+
+        <div className="setting-item">
+          <span>Hiện trục OXY: {showAxes ? 'Bật' : 'Tắt'}</span>
+          <div className="setting-btns">
+            <button style={{width: 'auto', padding: '0 8px'}} onPointerDown={(e) => { e.stopPropagation(); setShowAxes(prev => !prev); }}>
+              {showAxes ? 'Tắt' : 'Bật'}
+            </button>
+          </div>
+        </div>
+
+        <div className="setting-item">
+          <span>Tắt (Phím C)</span>
+          <div className="setting-btns">
+            <button style={{width: 'auto', padding: '0 8px'}} onPointerDown={(e) => { e.stopPropagation(); setShowSettings(false); }}>Đóng</button>
+          </div>
         </div>
       </div>
     );
@@ -138,20 +292,43 @@ const LiveCamera = () => {
   }
 
   return (
-    <div className="camera-container" onClick={enterFullscreen}>
-
+    <div className="camera-container" style={{ gap: `${settingGap}vw` }} onClick={enterFullscreen}>
       <canvas ref={canvasRef} style={{ display: 'none' }}></canvas>
 
-      <div className="eye-view left-eye">
+      <div className="eye-view left-eye" style={{ width: `${settingEyeWidth}vw`, height: `${settingEyeHeight}vh` }}>
         <video ref={leftVideoRef} autoPlay playsInline muted className="camera-video" />
         <HUD />
+        <SettingsMenu />
+        
+        {!showSettings && (
+          <button 
+             className="floating-settings-btn"
+             onClick={(e) => { e.stopPropagation(); setShowSettings(true); }}
+             onPointerDown={(e) => { e.stopPropagation(); setShowSettings(true); }}
+             title="Cài đặt VR"
+          >
+            ⚙️
+          </button>
+        )}
       </div>
 
       <div className="divider"></div>
 
-      <div className="eye-view right-eye">
+      <div className="eye-view right-eye" style={{ width: `${settingEyeWidth}vw`, height: `${settingEyeHeight}vh` }}>
         <video ref={rightVideoRef} autoPlay playsInline muted className="camera-video" />
         <HUD />
+        <SettingsMenu />
+        
+        {!showSettings && (
+          <button 
+             className="floating-settings-btn"
+             onClick={(e) => { e.stopPropagation(); setShowSettings(true); }}
+             onPointerDown={(e) => { e.stopPropagation(); setShowSettings(true); }}
+             title="Cài đặt VR"
+          >
+            ⚙️
+          </button>
+        )}
       </div>
     </div>
   );
