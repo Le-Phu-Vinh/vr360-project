@@ -19,7 +19,6 @@ const LiveCamera = () => {
   const [settingGap, setSettingGap] = useState(0);
   const [settingEyeWidth, setSettingEyeWidth] = useState(38);
   const [settingEyeHeight, setSettingEyeHeight] = useState(85);
-  const [showAxes, setShowAxes] = useState(true);
 
   const { gamepad, buttonStates, axes } = useGamepad();
 
@@ -213,7 +212,6 @@ const LiveCamera = () => {
               textureUrl={currentArtifact.textureUrl} 
               axes={axes}
               mouseRotation={isJoyRotationActive}
-              showAxes={showAxes}
             />
           </div>
         )}
@@ -260,15 +258,6 @@ const LiveCamera = () => {
           <div className="setting-btns">
             <button onPointerDown={(e) => { e.stopPropagation(); setSettingEyeHeight(v => Math.max(10, v - 1)); }}>-</button>
             <button onPointerDown={(e) => { e.stopPropagation(); setSettingEyeHeight(v => Math.min(100, v + 1)); }}>+</button>
-          </div>
-        </div>
-
-        <div className="setting-item">
-          <span>Hiện trục OXY: {showAxes ? 'Bật' : 'Tắt'}</span>
-          <div className="setting-btns">
-            <button style={{width: 'auto', padding: '0 8px'}} onPointerDown={(e) => { e.stopPropagation(); setShowAxes(prev => !prev); }}>
-              {showAxes ? 'Tắt' : 'Bật'}
-            </button>
           </div>
         </div>
 

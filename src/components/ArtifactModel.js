@@ -4,7 +4,7 @@ import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader';
 import { TextureLoader } from 'three';
 import { OrbitControls, PerspectiveCamera, Center, Float } from '@react-three/drei';
 
-const Model = ({ plyUrl, textureUrl, axes = [0, 0, 0, 0], mouseRotation = false, showAxes = true }) => {
+const Model = ({ plyUrl, textureUrl, axes = [0, 0, 0, 0], mouseRotation = false }) => {
   const meshRef = useRef();
   const geometry = useLoader(PLYLoader, plyUrl);
   const texture = useLoader(TextureLoader, textureUrl);
@@ -14,6 +14,7 @@ const Model = ({ plyUrl, textureUrl, axes = [0, 0, 0, 0], mouseRotation = false,
   useMemo(() => {
     if (geometry) {
       geometry.computeVertexNormals();
+      geometry.rotateX(Math.PI); // Lật lại vật thể nếu bị ngược đầu
     }
     if (texture) {
       texture.flipY = false;
@@ -68,17 +69,11 @@ const Model = ({ plyUrl, textureUrl, axes = [0, 0, 0, 0], mouseRotation = false,
   return (
     <mesh ref={meshRef} geometry={geometry}>
       <meshStandardMaterial map={texture} roughness={0.5} metalness={0.5} />
-      {showAxes && (
-        <>
-          <axesHelper args={[5]} />
-          <gridHelper args={[10, 10, 0x888888, 0x444444]} rotation={[Math.PI / 2, 0, 0]} />
-        </>
-      )}
     </mesh>
   );
 };
 
-const ArtifactModel = ({ plyUrl, textureUrl, axes = [0, 0, 0, 0], mouseRotation = false, showAxes = true }) => {
+const ArtifactModel = ({ plyUrl, textureUrl, axes = [0, 0, 0, 0], mouseRotation = false }) => {
   const isJoyStickActive = Math.abs(axes[0] || 0) > 0.1 || 
                            Math.abs(axes[1] || 0) > 0.1 || 
                            Math.abs(axes[2] || 0) > 0.1 || 
@@ -99,7 +94,6 @@ const ArtifactModel = ({ plyUrl, textureUrl, axes = [0, 0, 0, 0], mouseRotation 
               textureUrl={textureUrl} 
               axes={axes} 
               mouseRotation={mouseRotation} 
-              showAxes={showAxes}
             />
           </Center>
         </Float>
