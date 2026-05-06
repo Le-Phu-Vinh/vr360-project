@@ -6,6 +6,7 @@ import { OrbitControls, PerspectiveCamera, Center, Float } from '@react-three/dr
 
 const Model = ({ plyUrl, textureUrl, axes = [0, 0, 0, 0], mouseRotation = false }) => {
   const meshRef = useRef();
+  const groupRef = useRef();
   const geometry = useLoader(PLYLoader, plyUrl);
   const texture = useLoader(TextureLoader, textureUrl);
   const lastMousePos = useRef({ x: 0, y: 0 });
@@ -25,12 +26,11 @@ const Model = ({ plyUrl, textureUrl, axes = [0, 0, 0, 0], mouseRotation = false 
     const handleMouseMove = (e) => {
         if (!mouseRotation || !meshRef.current) return;
         
-        // Tính độ lệch chuột (hoặc joystick ở chế độ mouse)
         const deltaX = e.clientX - lastMousePos.current.x;
         const deltaY = e.clientY - lastMousePos.current.y;
         
-        // Chỉ cộng dồn nếu độ lệch vừa phải (tránh nhảy vọt khi mới bật mode)
-        if (Math.abs(deltaX) < 100 && Math.abs(deltaY) < 100) {
+        // Chỉ cập nhật nếu đây không phải là lần di chuyển đầu tiên (tránh nhảy vọt)
+        if (lastMousePos.current.x !== 0 && Math.abs(deltaX) < 100 && Math.abs(deltaY) < 100) {
             meshRef.current.rotation.y += deltaX * 0.01;
             meshRef.current.rotation.x += deltaY * 0.01;
         }
@@ -43,19 +43,37 @@ const Model = ({ plyUrl, textureUrl, axes = [0, 0, 0, 0], mouseRotation = false 
   }, [mouseRotation]);
 
   useFrame(() => {
-    // Polling trực tiếp từ Gamepad API để có độ trễ thấp nhất và chính xác nhất
-    const gamepads = navigator.getGamepads();
-    const gp = gamepads[0] || gamepads[1]; // Kiểm tra cả 2 slot đầu tiên
-    
-    let xMove = 0;
-    let yMove = 0;
+    // Sử dụng performance.now() để đồng bộ tuyệt đối giữa 2 mắt (Canvas riêng biệt)
+    const t = performance.now() / 1000;
 
+    // 1. Hiệu ứng trôi nổi (Float) đồng bộ
+    if (groupRef.current) {
+        groupRef.current.position.y = Math.sin(t * 1.5) * 0.15;
+        groupRef.current.rotation.z = Math.sin(t * 0.5) * 0.05;
+        groupRef.current.rotation.x = Math.cos(t * 0.5) * 0.05;
+    }
+
+    // 2. Logic xoay tự động (AutoRotate) đồng bộ
+    const isJoyStickActive = Math.abs(axes[0] || 0) > 0.1 || 
+                             Math.abs(axes[1] || 0) > 0.1 || 
+                             Math.abs(axes[2] || 0) > 0.1 || 
+                             Math.abs(axes[3] || 0) > 0.1;
+
+    if (!isJoyStickActive && !mouseRotation && meshRef.current) {
+        // Tăng dần rotation y theo thời gian thực thay vì cộng dồn delta để tránh lệch phase
+        meshRef.current.rotation.y = t * 0.5; 
+        meshRef.current.rotation.x = 0; // Reset x khi ở chế độ auto
+    }
+
+    // 3. Điều khiển bằng Gamepad/Joystick
+    const gamepads = navigator.getGamepads();
+    const gp = gamepads[0] || gamepads[1];
+    
+    let xMove = 0, yMove = 0;
     if (gp) {
-        // Cộng dồn các trục (một số tay cầm dùng 0,1; một số dùng 2,3)
         xMove = (gp.axes[0] || 0) + (gp.axes[2] || 0);
         yMove = (gp.axes[1] || 0) + (gp.axes[3] || 0);
     } else {
-        // Fallback dùng state từ prop nếu polling trực tiếp không có
         xMove = (axes[0] || 0) + (axes[2] || 0);
         yMove = (axes[1] || 0) + (axes[3] || 0);
     }
@@ -67,18 +85,17 @@ const Model = ({ plyUrl, textureUrl, axes = [0, 0, 0, 0], mouseRotation = false 
   });
 
   return (
-    <mesh ref={meshRef} geometry={geometry}>
-      <meshStandardMaterial map={texture} roughness={0.5} metalness={0.5} />
-    </mesh>
+    <group ref={groupRef}>
+        <Center>
+            <mesh ref={meshRef} geometry={geometry}>
+                <meshStandardMaterial map={texture} roughness={0.5} metalness={0.5} />
+            </mesh>
+        </Center>
+    </group>
   );
 };
 
 const ArtifactModel = ({ plyUrl, textureUrl, axes = [0, 0, 0, 0], mouseRotation = false }) => {
-  const isJoyStickActive = Math.abs(axes[0] || 0) > 0.1 || 
-                           Math.abs(axes[1] || 0) > 0.1 || 
-                           Math.abs(axes[2] || 0) > 0.1 || 
-                           Math.abs(axes[3] || 0) > 0.1;
-
   return (
     <Canvas style={{ width: '100%', height: '100%' }} shadows>
       <PerspectiveCamera makeDefault position={[0, 0, 5]} fov={50} />
@@ -87,23 +104,18 @@ const ArtifactModel = ({ plyUrl, textureUrl, axes = [0, 0, 0, 0], mouseRotation 
       <spotLight position={[-10, 10, 10]} angle={0.15} penumbra={1} intensity={1} />
       
       <Suspense fallback={null}>
-        <Float speed={2} rotationIntensity={0.5} floatIntensity={0.5}>
-          <Center>
-            <Model 
-              plyUrl={plyUrl} 
-              textureUrl={textureUrl} 
-              axes={axes} 
-              mouseRotation={mouseRotation} 
-            />
-          </Center>
-        </Float>
+        <Model 
+          plyUrl={plyUrl} 
+          textureUrl={textureUrl} 
+          axes={axes} 
+          mouseRotation={mouseRotation} 
+        />
       </Suspense>
       
       <OrbitControls 
         enablePan={false} 
         enableZoom={true} 
-        autoRotate={!isJoyStickActive && !mouseRotation}
-        autoRotateSpeed={1}
+        autoRotate={false} 
       />
     </Canvas>
   );
