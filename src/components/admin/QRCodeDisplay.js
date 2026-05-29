@@ -59,7 +59,7 @@ const QRCodeDisplay = ({ artifact, onClose }) => {
 
         <div className="qr-canvas-wrapper" ref={canvasContainerRef}>
           <QRCodeCanvas
-            value={artifact.artifactId || artifact.id}
+            value={`${window.location.origin}/?artifact=${artifact.artifactId || artifact.id}`}
             size={240}
             bgColor="#ffffff"
             fgColor="#1a1a2e"

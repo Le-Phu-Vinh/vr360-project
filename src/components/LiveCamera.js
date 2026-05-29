@@ -71,11 +71,28 @@ const LiveCamera = () => {
     };
   }, [buttonStates, gamepad]);
 
-  // Reset extras when a new artifact is scanned
+  // Show info automatically when a new artifact is scanned or loaded
   useEffect(() => {
-    setShowInfo(false);
-    setShowVideo(false);
+    if (currentArtifact) {
+      setShowInfo(true);
+      setShowVideo(false);
+    } else {
+      setShowInfo(false);
+      setShowVideo(false);
+    }
   }, [currentArtifact]);
+
+  // Load artifact from URL if present
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const artifactId = params.get('artifact');
+    if (artifactId && artifacts && artifacts.length > 0) {
+      const found = artifacts.find(a => a.id === artifactId || a.artifactId === artifactId);
+      if (found && (!currentArtifact || currentArtifact.id !== found.id)) {
+        setCurrentArtifact(found);
+      }
+    }
+  }, [artifacts]);
 
   useEffect(() => {
     startCamera();
@@ -161,7 +178,18 @@ const LiveCamera = () => {
       });
       
       if (code && code.data) {
-        const found = artifacts.find(a => a.id === code.data || a.artifactId === code.data);
+        let scannedId = code.data;
+        try {
+          const url = new URL(code.data);
+          const urlParams = new URLSearchParams(url.search);
+          if (urlParams.has('artifact')) {
+            scannedId = urlParams.get('artifact');
+          }
+        } catch (e) {
+          // Not a valid URL, fallback to raw string
+        }
+        
+        const found = artifacts.find(a => a.id === scannedId || a.artifactId === scannedId);
         if (found) {
             setCurrentArtifact(prev => prev?.id !== found.id ? found : prev);
         }
