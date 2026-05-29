@@ -1,9 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import jsQR from 'jsqr';
-import { artifactsData } from '../data/artifacts';
-import { artifactVideos } from '../data/videos';
 import ArtifactModel from './ArtifactModel';
 import useGamepad from '../hooks/useGamepad';
+import { useArtifacts } from '../context/ArtifactContext';
 import './LiveCamera.css';
 
 const LiveCamera = () => {
@@ -13,6 +12,8 @@ const LiveCamera = () => {
   const [hasPermission, setHasPermission] = useState(null);
   const [currentArtifact, setCurrentArtifact] = useState(null);
   const [isJoyRotationActive, setIsJoyRotationActive] = useState(true);
+  const [showInfo, setShowInfo] = useState(false);
+  const [showVideo, setShowVideo] = useState(false);
   
   // Trạng thái cài đặt màn hình thủ công
   const [showSettings, setShowSettings] = useState(false);
@@ -21,6 +22,7 @@ const LiveCamera = () => {
   const [settingEyeHeight, setSettingEyeHeight] = useState(85);
 
   const { gamepad, buttonStates, axes } = useGamepad();
+  const { artifacts } = useArtifacts();
 
   const streamRef = useRef(null);
   const scanIntervalRef = useRef(null);
@@ -28,44 +30,52 @@ const LiveCamera = () => {
   // Xử lý nút bấm Gamepad và Bàn phím (Mouse Mode)
   useEffect(() => {
     const handleKeyDown = (e) => {
-        // Giữ logic ẩn nhưng xóa log ra UI
-        if (e.key === '@' || e.key === 'Enter' || e.key === 'Escape' || e.code === 'KeyM') {
+        const key = e.key.toLowerCase();
+        if (key === '@' || key === 'm') {
             setIsJoyRotationActive(prev => !prev);
+        }
+        if (key === 'i') {
+            setShowInfo(prev => !prev);
+        }
+        if (key === 'v') {
+            setShowVideo(prev => !prev);
         }
         // Tay cầm VR thường map nút 'C' sang Volume Up / Down ở chế độ media
         if (
-            e.key.toLowerCase() === 'c' || 
+            key === 'c' || 
             e.key === 'AudioVolumeUp' || 
             e.code === 'VolumeUp' ||
             e.key === 'AudioVolumeDown' ||
             e.code === 'VolumeDown'
         ) {
             setShowSettings(prev => !prev);
-            // Cố gắng chặn hành vi mặc định tăng giảm âm lượng của trình duyệt
             if(e.cancelable) e.preventDefault();
         }
     };
     
-    const handleMouseDown = (e) => {
-        // Giữ để có thể toggle nếu cần nhưng không hiện log
-    };
-
     window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('mousedown', handleMouseDown);
 
     if (gamepad) {
-        if (buttonStates[0]) enterFullscreen();
-        if (buttonStates[1]) setCurrentArtifact(null);
-        if (buttonStates[3] || buttonStates[2]) {
-            setIsJoyRotationActive(prev => !prev);
+        if (buttonStates[0]) setShowInfo(prev => !prev);
+        if (buttonStates[1]) {
+            setCurrentArtifact(null);
+            setShowInfo(false);
+            setShowVideo(false);
         }
+        if (buttonStates[2]) setShowVideo(prev => !prev);
+        if (buttonStates[3]) setIsJoyRotationActive(prev => !prev);
     }
 
     return () => {
         window.removeEventListener('keydown', handleKeyDown);
-        window.removeEventListener('mousedown', handleMouseDown);
     };
   }, [buttonStates, gamepad]);
+
+  // Reset extras when a new artifact is scanned
+  useEffect(() => {
+    setShowInfo(false);
+    setShowVideo(false);
+  }, [currentArtifact]);
 
   useEffect(() => {
     startCamera();
@@ -149,7 +159,7 @@ const LiveCamera = () => {
       });
       
       if (code && code.data) {
-        const found = artifactsData.find(a => a.id === code.data);
+        const found = artifacts.find(a => a.id === code.data || a.artifactId === code.data);
         if (found) {
             setCurrentArtifact(prev => prev?.id !== found.id ? found : prev);
         }
@@ -183,30 +193,32 @@ const LiveCamera = () => {
 
   const HUD = () => {
     if (!currentArtifact) return null;
-    const matchingVideo = artifactVideos.find(v => v.id === currentArtifact.id);
+    const matchingVideo = currentArtifact.videoUrl
+      ? { videoUrl: currentArtifact.videoUrl, title: currentArtifact.videoTitle }
+      : null;
 
     return (
       <div className="artifact-card">
-        <div className="card-info-section">
-
-
-          <div className="card-header">
-            <div className="card-id">ID: {currentArtifact.id}</div>
-            <h2 className="card-title">{currentArtifact.name}</h2>
-            <div className="status-row">
-                {gamepad && <div className="gamepad-status active">🎮 Connected</div>}
+        {showInfo && (
+          <div className="card-info-section">
+            <div className="card-header">
+              <div className="card-id">ID: {currentArtifact.id}</div>
+              <h2 className="card-title">{currentArtifact.name}</h2>
+              <div className="status-row">
+                  {gamepad && <div className="gamepad-status active">🎮 Connected</div>}
+              </div>
+            </div>
+            <div className="card-body">
+              <p className="card-detail"><span>Nguồn gốc:</span> {currentArtifact.origin}</p>
+              <p className="card-detail"><span>Niên đại:</span> {currentArtifact.period}</p>
+              <p className="card-detail"><span>Vật liệu:</span> {currentArtifact.material}</p>
+              <p className="card-desc">{currentArtifact.description}</p>
             </div>
           </div>
-          <div className="card-body">
-            <p className="card-detail"><span>Nguồn gốc:</span> {currentArtifact.origin}</p>
-            <p className="card-detail"><span>Niên đại:</span> {currentArtifact.period}</p>
-            <p className="card-detail"><span>Vật liệu:</span> {currentArtifact.material}</p>
-            <p className="card-desc">{currentArtifact.description}</p>
-          </div>
-        </div>
+        )}
         
         {currentArtifact.modelUrl && currentArtifact.textureUrl && (
-          <div className="card-model-section">
+          <div className={`card-model-section ${!(showInfo || showVideo) ? 'centered' : ''}`}>
             <ArtifactModel 
               plyUrl={currentArtifact.modelUrl} 
               textureUrl={currentArtifact.textureUrl} 
@@ -216,7 +228,7 @@ const LiveCamera = () => {
           </div>
         )}
 
-        {matchingVideo && (
+        {showVideo && matchingVideo && (
           <div className="card-video-container">
              <video 
                src={matchingVideo.videoUrl} 
@@ -227,6 +239,42 @@ const LiveCamera = () => {
              />
           </div>
         )}
+      </div>
+    );
+  };
+
+  const VRToolbar = () => {
+    if (!currentArtifact || showSettings) return null;
+    return (
+      <div className="vr-toolbar" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
+        <button 
+          className={`toolbar-btn ${showInfo ? 'active' : ''}`}
+          onClick={() => setShowInfo(!showInfo)}
+        >
+          📄
+        </button>
+        <button 
+          className={`toolbar-btn ${showVideo ? 'active' : ''}`}
+          onClick={() => setShowVideo(!showVideo)}
+        >
+          🎬
+        </button>
+        <button 
+          className={`toolbar-btn ${isJoyRotationActive ? 'active' : ''}`}
+          onClick={() => setIsJoyRotationActive(!isJoyRotationActive)}
+        >
+          🔄
+        </button>
+        <button 
+          className="toolbar-btn reset-btn"
+          onClick={() => {
+            setCurrentArtifact(null);
+            setShowInfo(false);
+            setShowVideo(false);
+          }}
+        >
+          🗑️
+        </button>
       </div>
     );
   };
@@ -287,6 +335,7 @@ const LiveCamera = () => {
       <div className="eye-view left-eye" style={{ width: `${settingEyeWidth}vw`, height: `${settingEyeHeight}vh` }}>
         <video ref={leftVideoRef} autoPlay playsInline muted className="camera-video" />
         <HUD />
+        <VRToolbar />
         <SettingsMenu />
         
         {!showSettings && (
@@ -306,6 +355,7 @@ const LiveCamera = () => {
       <div className="eye-view right-eye" style={{ width: `${settingEyeWidth}vw`, height: `${settingEyeHeight}vh` }}>
         <video ref={rightVideoRef} autoPlay playsInline muted className="camera-video" />
         <HUD />
+        <VRToolbar />
         <SettingsMenu />
         
         {!showSettings && (
