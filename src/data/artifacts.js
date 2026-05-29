@@ -5,7 +5,9 @@ export const artifactsData = [
     origin: "Lưu vực sông Hồng, Việt Nam",
     period: "Khoảng 700 TCN - 100 SCN",
     material: "Đồng thau",
-    description: "Biểu tượng đỉnh cao của nền văn minh lúa nước cổ đại, mặt trống được chạm khắc các họa tiết ngôi sao, cò bay và cảnh sinh hoạt đặc sắc của người Việt cổ."
+    description: "Biểu tượng đỉnh cao của nền văn minh lúa nước cổ đại, mặt trống được chạm khắc các họa tiết ngôi sao, cò bay và cảnh sinh hoạt đặc sắc của người Việt cổ.",
+    modelUrl: "/videos/mesh_textured.ply",
+    textureUrl: "/videos/pic_360.jpg"
   },
   {
     id: "CV002",
