@@ -53,8 +53,9 @@ const Model = ({ plyUrl, textureUrl, axes = [0, 0, 0, 0], mouseRotation = false 
     };
 
     window.addEventListener('mousemove', handleMouseMove);
+    const currentId = instanceId.current;
     return () => {
-        sharedSyncState.instances.delete(instanceId.current);
+        sharedSyncState.instances.delete(currentId);
         window.removeEventListener('mousemove', handleMouseMove);
     };
   }, [mouseRotation]);
@@ -62,7 +63,6 @@ const Model = ({ plyUrl, textureUrl, axes = [0, 0, 0, 0], mouseRotation = false 
   useFrame(() => {
     const now = performance.now();
     const t = now / 1000;
-    const dt = Math.min((now - sharedSyncState.lastUpdate) / 1000, 0.1);
     
     // Designated primary instance updates the shared state
     const instances = Array.from(sharedSyncState.instances);

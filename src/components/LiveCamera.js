@@ -83,6 +83,7 @@ const LiveCamera = () => {
       stopCamera();
       if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Tự động gán stream khi refs đã sẵn sàng
@@ -107,6 +108,7 @@ const LiveCamera = () => {
         };
         setupVideos();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasPermission]);
 
   const startCamera = async () => {
