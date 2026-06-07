@@ -24,6 +24,12 @@ const LiveCamera = () => {
 
   const { gamepad, buttonStates, axes } = useGamepad();
   const { artifacts } = useArtifacts();
+  
+  // Use a ref to keep track of the latest artifacts array for the scanQRCode interval closure
+  const artifactsRef = useRef(artifacts);
+  useEffect(() => {
+    artifactsRef.current = artifacts;
+  }, [artifacts]);
 
   const streamRef = useRef(null);
   const scanIntervalRef = useRef(null);
@@ -193,7 +199,8 @@ const LiveCamera = () => {
           // Not a valid URL, fallback to raw string
         }
         
-        const found = artifacts.find(a => 
+        const currentArtifacts = artifactsRef.current;
+        const found = currentArtifacts.find(a => 
           a.id?.toLowerCase() === scannedId.toLowerCase() || 
           a.artifactId?.toLowerCase() === scannedId.toLowerCase()
         );
@@ -204,7 +211,7 @@ const LiveCamera = () => {
             setShowInfo(true);
             setShowVideo(false);
         } else {
-            setDebugText(`${debugMsg} (KHÔNG TÌM THẤY TRONG ${artifacts.length} MỤC)`);
+            setDebugText(`${debugMsg} (KHÔNG TÌM THẤY TRONG ${currentArtifacts.length} MỤC)`);
         }
       }
     }
@@ -404,7 +411,6 @@ const LiveCamera = () => {
       <canvas ref={canvasRef} style={{ display: 'none' }}></canvas>
 
       <div className="eye-view left-eye" style={{ width: `${settingEyeWidth}vw`, height: `${settingEyeHeight}vh` }}>
-        <div className="debug-overlay">{debugText}</div>
         <video ref={leftVideoRef} autoPlay playsInline muted className="camera-video" />
         <ScannerFrame />
         <HUD />
@@ -426,7 +432,6 @@ const LiveCamera = () => {
       <div className="divider"></div>
 
       <div className="eye-view right-eye" style={{ width: `${settingEyeWidth}vw`, height: `${settingEyeHeight}vh` }}>
-        <div className="debug-overlay">{debugText}</div>
         <video ref={rightVideoRef} autoPlay playsInline muted className="camera-video" />
         <ScannerFrame />
         <HUD />
