@@ -245,18 +245,34 @@ const LiveCamera = () => {
       <div className="artifact-card">
         {showInfo && (
           <div className="card-info-section">
+            <div className="card-section-title">Thông tin hiện vật</div>
             <div className="card-header">
-              <div className="card-id">ID: {currentArtifact.id}</div>
               <h2 className="card-title">{currentArtifact.name}</h2>
+              <div className="card-id">ID: {currentArtifact.id}</div>
               <div className="status-row">
                   {gamepad && <div className="gamepad-status active">🎮 Connected</div>}
               </div>
             </div>
             <div className="card-body">
-              <p className="card-detail"><span>Nguồn gốc:</span> {currentArtifact.origin}</p>
-              <p className="card-detail"><span>Niên đại:</span> {currentArtifact.period}</p>
-              <p className="card-detail"><span>Vật liệu:</span> {currentArtifact.material}</p>
-              <p className="card-desc">{currentArtifact.description}</p>
+              {currentArtifact.period && (
+                <div className="card-detail-item">
+                  <div className="detail-label">Niên đại:</div>
+                  <div className="detail-value">{currentArtifact.period}</div>
+                </div>
+              )}
+              {currentArtifact.material && (
+                <div className="card-detail-item">
+                  <div className="detail-label">Chất liệu:</div>
+                  <div className="detail-value">{currentArtifact.material}</div>
+                </div>
+              )}
+              {currentArtifact.origin && (
+                <div className="card-detail-item">
+                  <div className="detail-label">Nguồn gốc:</div>
+                  <div className="detail-value">{currentArtifact.origin}</div>
+                </div>
+              )}
+              <div className="card-desc">{currentArtifact.description}</div>
             </div>
           </div>
         )}
