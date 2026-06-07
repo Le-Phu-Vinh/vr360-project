@@ -223,6 +223,18 @@ const LiveCamera = () => {
     }
   };
 
+  const ScannerFrame = () => {
+    if (currentArtifact || showSettings) return null;
+    return (
+      <div className="qr-scanner-frame">
+        <div className="qr-scanner-corner top-left"></div>
+        <div className="qr-scanner-corner top-right"></div>
+        <div className="qr-scanner-corner bottom-left"></div>
+        <div className="qr-scanner-corner bottom-right"></div>
+      </div>
+    );
+  };
+
   const HUD = () => {
     if (!currentArtifact) return null;
     const matchingVideo = currentArtifact.videoUrl
@@ -366,6 +378,7 @@ const LiveCamera = () => {
 
       <div className="eye-view left-eye" style={{ width: `${settingEyeWidth}vw`, height: `${settingEyeHeight}vh` }}>
         <video ref={leftVideoRef} autoPlay playsInline muted className="camera-video" />
+        <ScannerFrame />
         <HUD />
         <VRToolbar />
         <SettingsMenu />
@@ -386,6 +399,7 @@ const LiveCamera = () => {
 
       <div className="eye-view right-eye" style={{ width: `${settingEyeWidth}vw`, height: `${settingEyeHeight}vh` }}>
         <video ref={rightVideoRef} autoPlay playsInline muted className="camera-video" />
+        <ScannerFrame />
         <HUD />
         <VRToolbar />
         <SettingsMenu />
