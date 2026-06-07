@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import jsQR from 'jsqr';
+import { ChevronLeft, FileText, PlayCircle, Box, Layers, MapPin } from 'lucide-react';
 import ArtifactModel from './ArtifactModel';
 import useGamepad from '../hooks/useGamepad';
 import { useArtifacts } from '../context/ArtifactContext';
@@ -263,34 +264,56 @@ const LiveCamera = () => {
       <div className="artifact-card">
         {showInfo && (
           <div className="card-info-section">
-            <div className="card-section-title">Thông tin hiện vật</div>
-            <div className="card-header">
-              <h2 className="card-title">{currentArtifact.name}</h2>
-              <div className="card-id">ID: {currentArtifact.id}</div>
-              <div className="status-row">
-                  {gamepad && <div className="gamepad-status active">🎮 Connected</div>}
-              </div>
+            <div className="card-top-bar">
+              <button className="back-btn" onClick={(e) => { e.stopPropagation(); setCurrentArtifact(null); setShowInfo(false); setShowVideo(false); }}>
+                <ChevronLeft size={16} />
+              </button>
+              <div className="card-section-title">Thông tin hiện vật</div>
+              <div style={{ width: 16 }}></div>
             </div>
-            <div className="card-body">
-              {currentArtifact.period && (
-                <div className="card-detail-item">
-                  <div className="detail-label">Niên đại:</div>
-                  <div className="detail-value">{currentArtifact.period}</div>
+            
+            <div className="card-content-layout">
+              <div className="card-sidebar">
+                <button className="sidebar-btn active"><FileText size={12}/> Thông tin</button>
+                <button className={`sidebar-btn ${showVideo ? 'active' : ''}`} onClick={(e) => { e.stopPropagation(); setShowVideo(!showVideo); }}>
+                  <PlayCircle size={12}/> Video
+                </button>
+                <button className={`sidebar-btn ${!isJoyRotationActive ? 'active' : ''}`} onClick={(e) => { e.stopPropagation(); setIsJoyRotationActive(!isJoyRotationActive); }}>
+                  <Box size={12}/> 3D Model
+                </button>
+              </div>
+
+              <div className="card-main-content">
+                <div className="card-header">
+                  <h2 className="card-title">{currentArtifact.name}</h2>
+                  {currentArtifact.period ? (
+                    <div className="card-subtitle">{currentArtifact.period}</div>
+                  ) : (
+                    <div className="card-id">ID: {currentArtifact.id}</div>
+                  )}
                 </div>
-              )}
-              {currentArtifact.material && (
-                <div className="card-detail-item">
-                  <div className="detail-label">Chất liệu:</div>
-                  <div className="detail-value">{currentArtifact.material}</div>
+                
+                <div className="card-body">
+                  <div className="attributes-list">
+                    {currentArtifact.material && (
+                      <div className="card-detail-item">
+                        <div className="detail-icon"><Layers size={10}/></div>
+                        <div className="detail-label">Chất liệu:</div>
+                        <div className="detail-value">{currentArtifact.material}</div>
+                      </div>
+                    )}
+                    {currentArtifact.origin && (
+                      <div className="card-detail-item">
+                        <div className="detail-icon"><MapPin size={10}/></div>
+                        <div className="detail-label">Nguồn gốc:</div>
+                        <div className="detail-value">{currentArtifact.origin}</div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="card-desc">{currentArtifact.description}</div>
                 </div>
-              )}
-              {currentArtifact.origin && (
-                <div className="card-detail-item">
-                  <div className="detail-label">Nguồn gốc:</div>
-                  <div className="detail-value">{currentArtifact.origin}</div>
-                </div>
-              )}
-              <div className="card-desc">{currentArtifact.description}</div>
+              </div>
             </div>
           </div>
         )}
@@ -321,41 +344,7 @@ const LiveCamera = () => {
     );
   };
 
-  const VRToolbar = () => {
-    if (!currentArtifact || showSettings) return null;
-    return (
-      <div className="vr-toolbar" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
-        <button 
-          className={`toolbar-btn ${showInfo ? 'active' : ''}`}
-          onClick={() => setShowInfo(!showInfo)}
-        >
-          📄
-        </button>
-        <button 
-          className={`toolbar-btn ${showVideo ? 'active' : ''}`}
-          onClick={() => setShowVideo(!showVideo)}
-        >
-          🎬
-        </button>
-        <button 
-          className={`toolbar-btn ${isJoyRotationActive ? 'active' : ''}`}
-          onClick={() => setIsJoyRotationActive(!isJoyRotationActive)}
-        >
-          🔄
-        </button>
-        <button 
-          className="toolbar-btn reset-btn"
-          onClick={() => {
-            setCurrentArtifact(null);
-            setShowInfo(false);
-            setShowVideo(false);
-          }}
-        >
-          🗑️
-        </button>
-      </div>
-    );
-  };
+
 
   const SettingsMenu = () => {
     if (!showSettings) return null;
@@ -414,7 +403,6 @@ const LiveCamera = () => {
         <video ref={leftVideoRef} autoPlay playsInline muted className="camera-video" />
         <ScannerFrame />
         <HUD />
-        <VRToolbar />
         <SettingsMenu />
         
         {!showSettings && (
@@ -435,7 +423,6 @@ const LiveCamera = () => {
         <video ref={rightVideoRef} autoPlay playsInline muted className="camera-video" />
         <ScannerFrame />
         <HUD />
-        <VRToolbar />
         <SettingsMenu />
         
         {!showSettings && (
