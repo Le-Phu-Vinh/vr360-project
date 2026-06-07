@@ -63,7 +63,7 @@ const QRCodeDisplay = ({ artifact, onClose }) => {
             size={240}
             bgColor="#ffffff"
             fgColor="#1a1a2e"
-            level="H"
+            level="M"
             includeMargin={true}
           />
         </div>

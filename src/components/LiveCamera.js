@@ -174,16 +174,16 @@ const LiveCamera = () => {
       const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
       
       const code = jsQR(imageData.data, imageData.width, imageData.height, {
-        inversionAttempts: "dontInvert",
+        inversionAttempts: "attemptBoth",
       });
       
       if (code && code.data) {
-        let scannedId = code.data;
+        let scannedId = code.data.trim();
         try {
-          const url = new URL(code.data);
+          const url = new URL(scannedId);
           const urlParams = new URLSearchParams(url.search);
           if (urlParams.has('artifact')) {
-            scannedId = urlParams.get('artifact');
+            scannedId = urlParams.get('artifact').trim();
           }
         } catch (e) {
           // Not a valid URL, fallback to raw string
@@ -192,6 +192,8 @@ const LiveCamera = () => {
         const found = artifacts.find(a => a.id === scannedId || a.artifactId === scannedId);
         if (found) {
             setCurrentArtifact(prev => prev?.id !== found.id ? found : prev);
+            setShowInfo(true);
+            setShowVideo(false);
         }
       }
     }
