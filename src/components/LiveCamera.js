@@ -14,6 +14,7 @@ const LiveCamera = () => {
   const [isJoyRotationActive, setIsJoyRotationActive] = useState(true);
   const [showInfo, setShowInfo] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
+  const [debugText, setDebugText] = useState("Đang chờ quét QR...");
   
   // Trạng thái cài đặt màn hình thủ công
   const [showSettings, setShowSettings] = useState(false);
@@ -174,26 +175,36 @@ const LiveCamera = () => {
       const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
       
       const code = jsQR(imageData.data, imageData.width, imageData.height, {
-        inversionAttempts: "attemptBoth",
+        inversionAttempts: "dontInvert", // Reverting back to dontInvert as attemptBoth can be very slow
       });
       
       if (code && code.data) {
         let scannedId = code.data.trim();
+        let debugMsg = `Mã: ${scannedId}`;
+        
         try {
           const url = new URL(scannedId);
           const urlParams = new URLSearchParams(url.search);
           if (urlParams.has('artifact')) {
             scannedId = urlParams.get('artifact').trim();
+            debugMsg += ` -> ID: ${scannedId}`;
           }
         } catch (e) {
           // Not a valid URL, fallback to raw string
         }
         
-        const found = artifacts.find(a => a.id === scannedId || a.artifactId === scannedId);
+        const found = artifacts.find(a => 
+          a.id?.toLowerCase() === scannedId.toLowerCase() || 
+          a.artifactId?.toLowerCase() === scannedId.toLowerCase()
+        );
+        
         if (found) {
+            setDebugText(`${debugMsg} (TÌM THẤY)`);
             setCurrentArtifact(prev => prev?.id !== found.id ? found : prev);
             setShowInfo(true);
             setShowVideo(false);
+        } else {
+            setDebugText(`${debugMsg} (KHÔNG TÌM THẤY TRONG ${artifacts.length} MỤC)`);
         }
       }
     }
@@ -393,6 +404,7 @@ const LiveCamera = () => {
       <canvas ref={canvasRef} style={{ display: 'none' }}></canvas>
 
       <div className="eye-view left-eye" style={{ width: `${settingEyeWidth}vw`, height: `${settingEyeHeight}vh` }}>
+        <div className="debug-overlay">{debugText}</div>
         <video ref={leftVideoRef} autoPlay playsInline muted className="camera-video" />
         <ScannerFrame />
         <HUD />
@@ -414,6 +426,7 @@ const LiveCamera = () => {
       <div className="divider"></div>
 
       <div className="eye-view right-eye" style={{ width: `${settingEyeWidth}vw`, height: `${settingEyeHeight}vh` }}>
+        <div className="debug-overlay">{debugText}</div>
         <video ref={rightVideoRef} autoPlay playsInline muted className="camera-video" />
         <ScannerFrame />
         <HUD />
