@@ -47,34 +47,75 @@ export const ArtifactProvider = ({ children }) => {
   const [firestoreReady, setFirestoreReady] = useState(false);
 
   useEffect(() => {
-    const q = query(collection(db, 'artifacts'), orderBy('createdAt', 'asc'));
+    let active = true;
+    let unsubscribe = null;
 
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        setFirestoreReady(true);
-        if (snapshot.empty) {
-          // Fallback to static default data when Firestore is empty
-          setArtifacts(normalizeStaticData());
-        } else {
-          const docs = snapshot.docs.map((d) => ({
-            ...d.data(),
-            docId: d.id,
-            id: d.data().artifactId, // normalize so LiveCamera can use a.id
-          }));
-          setArtifacts(docs);
+    const initData = async () => {
+      try {
+        const snapshot = await getDocs(collection(db, 'artifacts'));
+        if (snapshot.empty && active) {
+          console.log('Firestore is empty. Automatically seeding default data...');
+          const staticData = normalizeStaticData();
+          for (const artifact of staticData) {
+            await addDoc(collection(db, 'artifacts'), {
+              artifactId: artifact.artifactId,
+              name: artifact.name,
+              origin: artifact.origin,
+              period: artifact.period,
+              material: artifact.material,
+              description: artifact.description,
+              modelUrl: artifact.modelUrl,
+              textureUrl: artifact.textureUrl,
+              videoUrl: artifact.videoUrl,
+              videoTitle: artifact.videoTitle,
+              imageUrl: artifact.imageUrl,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            });
+          }
+          console.log('Automatic seeding completed.');
         }
-        setLoading(false);
-      },
-      (error) => {
-        console.error('Firestore error:', error);
-        // Fallback to static data on error
-        setArtifacts(normalizeStaticData());
-        setLoading(false);
+      } catch (err) {
+        console.error('Error during auto-seeding or check:', err);
       }
-    );
 
-    return unsubscribe;
+      if (!active) return;
+
+      const q = query(collection(db, 'artifacts'), orderBy('createdAt', 'asc'));
+      unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          setFirestoreReady(true);
+          if (snapshot.empty) {
+            // Fallback to static default data when Firestore is empty
+            setArtifacts(normalizeStaticData());
+          } else {
+            const docs = snapshot.docs.map((d) => ({
+              ...d.data(),
+              docId: d.id,
+              id: d.data().artifactId, // normalize so LiveCamera can use a.id
+            }));
+            setArtifacts(docs);
+          }
+          setLoading(false);
+        },
+        (error) => {
+          console.error('Firestore error:', error);
+          // Fallback to static data on error
+          setArtifacts(normalizeStaticData());
+          setLoading(false);
+        }
+      );
+    };
+
+    initData();
+
+    return () => {
+      active = false;
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, []);
 
   const addArtifact = async (data) => {
